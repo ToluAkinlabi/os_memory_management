@@ -1,4 +1,4 @@
-// collaborated with onyinyechukwu ogbunaya
+//collaborated with onyinyechukwu ogbunaya
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,6 +6,8 @@
 #include <string.h>
 #include "list.h"
 #include "util.h"
+
+enum MMU_POLICY {FIFO = 1, BESTFIT, WORSTFIT}; 
 
 void TOUPPER(char * arr){
   
@@ -65,6 +67,31 @@ void allocate_memory(list_t * freelist, list_t * alloclist, int pid, int blocksi
     *     d. set the fragment->end = original blk.end before you changed it in #4
     *     e. add the fragment to the FREE_LIST based on policy
     */
+	
+		if(!list_is_in_by_size(freelist, blocksize)) {
+			printf("Error: Memory Allocation %d blocks\n", blocksize);
+			return;
+		}
+		
+		int block_idx = list_get_index_of_by_Size(freelist, blocksize);
+		block_t* blk = list_remove_at_index(freelist, block_idx);
+		int orig_blk_end = blk->end;
+		blk->pid = pid;
+    blk->end = blk->start + blocksize - 1;
+		list_add_ascending_by_address(alloclist, blk);
+		block_t* fragment = malloc(sizeof(block_t));
+		fragment->pid = 0;
+		fragment->start = blk->end + 1;
+		fragment->end = orig_blk_end;
+		// add to free list based on policy
+		if (policy == FIFO) {
+			list_add_to_back(freelist, fragment);
+		} else if(policy == BESTFIT) {
+			list_add_ascending_by_blocksize(freelist, fragment);
+		} else {
+			list_add_descending_by_blocksize(freelist, fragment);
+		}
+	
 }
 
 void deallocate_memory(list_t * alloclist, list_t * freelist, int pid, int policy) { 
@@ -82,6 +109,21 @@ void deallocate_memory(list_t * alloclist, list_t * freelist, int pid, int polic
     * 3. set the blk.pid back to 0
     * 4. add the blk back to the FREE_LIST based on policy.
     */
+		if(!list_is_in_by_pid(alloclist, pid)){
+			printf("Error: Can't locate Memory Used by PID: %d", pid);
+			return;
+		}
+		int block_idx = list_get_index_of_by_Pid(alloclist, pid);
+		block_t* blk = list_remove_at_index(alloclist, block_idx);
+		blk->pid = 0;
+		// add to free list based on policy
+		if (policy == FIFO) {
+			list_add_to_back(freelist, blk);
+		} else if(policy == BESTFIT) {
+			list_add_ascending_by_blocksize(freelist, blk);
+		} else {
+			list_add_descending_by_blocksize(freelist, blk);
+		}
 }
 
 list_t* coalese_memory(list_t * list){
